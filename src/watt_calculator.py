@@ -7,88 +7,70 @@ import sys
 import math
 
 def calculate_normalized_credit(
-        raw_watts,
-        duration_seconds,
-        resistance_level,
-        baseline_watts,
+        current_watts,
         sessions_last_30_days,
+        total_lifetime_sessions,
         target_sessions=12):
     """
     Calculate a normalized wattage credit for a member's workout session.
+
+    The normalization engine rewards consistency (the number of sessions
+    completed in the last 30 days) as the sole behavioral modifier.
+    Raw wattage is always guaranteed as the base credit, ensuring no member
+    is penalized for their fitness level. New members receive a grace period
+    for their first 12 lifetime sessions, after which consistency is measured.
     
     Parameters:
-        raw_watts (float):              Average wattage generated during session
-        duration_seconds (int):         Total session duration in seconds
-        resistance_level (int):         Machine resistance setting (1-10)
-        baseline_watts (float):         Member's historical average wattage output over the last 90 days
-        sessions_last_30_days (int):    Number of sessions completed in the last 30 days
+        current_watts (float):          Wattage generated during this session
+        sessions_last_30_days (int):    Sessions completed in the last 30 days
+                                            (not including the current session)
+        total_lifetime_sessions (int):  Total number of sessions across all time
+                                            (not including the current session)
         target_sessions (int):          Target sessions per month (default: 12)
     
     Returns:
-        dict: Breakdown of all factors and the final normalized wattage credit (Wh)
+        dict: Breakdown of consistency bonus and final normalized credit (Wh)
     """
 
     # --- Input Validation ---
-    if raw_watts < 0:
+    if current_watts < 0:
         raise ValueError("raw_watts cannot be negative.")
-    if duration_seconds < 0:
-        raise ValueError("duration_seconds cannot be negative.")
-    if not 1 <= resistance_level <= 10:
-        raise ValueError("resistance_level must be between 1 and 10.")
-    if baseline_watts < 0:
-        raise ValueError("baseline_watts cannot be negative.")
     if sessions_last_30_days < 0:
         raise ValueError("sessions_last_30_days cannot be negative.")
+    if total_lifetime_sessions < 0:
+        raise ValueError("total_lifetime_sessions cannot be negative.")
 
-    # --- Factor Calculations ---
+    # --- Consistency Bonus ---
 
-    # Step 1: Duration Factor
-    # Rewards longer sessions up to a 60 minute
-    # A 30-minute session scores 0.5; a 60-minute session scores 1.0
-    duration_minutes = duration_seconds / 60
-    duration_factor = min(duration_minutes / 60, 1.0)
-
-    # Step 2: Resistance Factor
-    # Rewards higher resistance settings on a 1-10 scale
-    # Resistance 5 scores 0.5; Resistance 10 scores 1.0
-    resistance_factor = resistance_level / 10
-
-    # Step 3: Baseline Factor
-    # Rewards effort relative to the member's own historical average over the past 90 days
-    # Capped at 1.5 to prevent extreme outliers from distorting credits
-    # New members (baseline = 0) receive a neutral factor of 1.0
-    if baseline_watts == 0:
-        baseline_factor = 1.0  # New member — no history yet, neutral
+    # New members receive a full 1.0 bonus for their first 12 lifetime
+    # sessions — one complete monthly cycle — giving them time to establish
+    # a routine before consistency is factored into their rewards.
+    # After session 12, the real consistency measurement begins.
+    if total_lifetime_sessions <= target_sessions:
+        consistency_bonus = 1.0  # Grace period — full bonus
+        grace_period = True
     else:
-        baseline_factor = min(raw_watts / baseline_watts, 1.5)
-
-    # Step 4: Consistency Factor
-    # Rewards members who attend regularly over the past 30 days
-    # Capped at 1.2 — consistent members earn a maximum 20% bonus
-    # New members (0 sessions) receive a neutral factor of 1.0
-    if sessions_last_30_days == 0:
-        consistency_factor = 1.0  # New member — no history yet, neutral
-    else:
-        consistency_factor = min(
-            sessions_last_30_days / target_sessions, 1.2
+        consistency_bonus = min(
+            sessions_last_30_days / target_sessions, 1.0
         )
+        grace_period = False
 
     # --- Final Calculation ---
-    # Normalized credit = raw output adjusted by all four behavioral factors
-    normalized_credit = (
-        raw_watts
-        * duration_factor
-        * resistance_factor
-        * baseline_factor
-        * consistency_factor
-    )
+    # Base credit is always equal to actual watts generated — never reduced.
+    # Consistency bonus adds up to 10% on top of the base credit.
+    # Maximum possible multiplier: 1.10 (perfect consistency)
+    # Minimum possible multiplier: 1.0  (no sessions in last 30 days,
+    #                                    but base credit always guaranteed)
+    bonus_multiplier = 1.0 + (consistency_bonus * 0.10)
+    normalized_credit = current_watts * bonus_multiplier
 
     return {
-        "raw_watts": raw_watts,
-        "duration_factor": round(duration_factor, 4),
-        "resistance_factor": round(resistance_factor, 4),
-        "baseline_factor": round(baseline_factor, 4),
-        "consistency_factor": round(consistency_factor, 4),
+        "current_watts": current_watts,
+        "total_lifetime_sessions": total_lifetime_sessions,
+        "grace_period": grace_period,
+        "sessions_last_30_days": sessions_last_30_days,
+        "consistency_bonus": round(consistency_bonus, 4),
+        "bonus_multiplier": round(bonus_multiplier, 4),
         "normalized_credit": round(normalized_credit, 2),
         "added_to_balance": math.floor(normalized_credit)
     }
@@ -101,18 +83,20 @@ def print_session_summary(member_name, result):
         member_name (str):  Name of the gym member
         result (dict):      Output from calculate_normalized_credit()
     """
-    print(f"\n{'='*45}")
-    print(f"  Member: {member_name}")
-    print(f"{'='*45}")
-    print(f"  Raw Watts:            {result['raw_watts']} W")
-    print(f"  Duration Factor:      {result['duration_factor']}")
-    print(f"  Resistance Factor:    {result['resistance_factor']}")
-    print(f"  Baseline Factor:      {result['baseline_factor']}")
-    print(f"  Consistency Factor:   {result['consistency_factor']}")
-    print(f"  {'─'*38}")
-    print(f"  Normalized Credit:    {result['normalized_credit']} Wh")
-    print(f"  Added To Balance:     {result['added_to_balance']} Wh")
-    print(f"{'='*45}")
+    grace_label = " (Grace Period)" if result['grace_period'] else ""
+
+    print(f"\n{'='*48}")
+    print(f"  Member:                  {member_name}")
+    print(f"{'='*48}")
+    print(f"  Current Watts:           {result['current_watts']} W")
+    print(f"  Lifetime Sessions:       {result['total_lifetime_sessions']}{grace_label}")
+    print(f"  Sessions (Last 30 Days): {result['sessions_last_30_days']}")
+    print(f"  Consistency Bonus:       {result['consistency_bonus']}")
+    print(f"  Bonus Multiplier:        {result['bonus_multiplier']}")
+    print(f"  {'─'*41}")
+    print(f"  Normalized Credit:       {result['normalized_credit']} Wh")
+    print(f"  Added To Balance:        {result['added_to_balance']} Wh")
+    print(f"{'='*48}")
 
 
 if __name__ == "__main__":
@@ -124,18 +108,16 @@ if __name__ == "__main__":
 
         try:
             i_name = input("Member name: ")
-            i_raw_watts = float(input("Session wattage generated: "))
-            i_duration_minutes = float(input("Session duration (minutes): "))
-            i_resistance_level = int(input("Resistance level (1-10): "))
-            i_baseline_watts = float(input("Total number of watts over the last 90 days (0 if new): "))
-            i_sessions_last_30_days = int(input("Sessions in last 30 days: "))
+            i_current_watts = float(input("Session watts generated: "))
+            i_sessions_last_30_days = int(input(
+                "Sessions completed in last 30 days (not including this one): "))
+            i_total_lifetime_sessions = int(input(
+                "Total lifetime sessions (not including this one): "))
 
             m_result = calculate_normalized_credit(
-                raw_watts=i_raw_watts,
-                duration_seconds=int(i_duration_minutes * 60),
-                resistance_level=i_resistance_level,
-                baseline_watts=i_baseline_watts,
-                sessions_last_30_days=i_sessions_last_30_days
+                current_watts=i_current_watts,
+                sessions_last_30_days=i_sessions_last_30_days,
+                total_lifetime_sessions=i_total_lifetime_sessions
             )
             print_session_summary(i_name, m_result)
 
@@ -144,79 +126,63 @@ if __name__ == "__main__":
             print("Please re-run and enter valid values.")
 
     else:
-        print("Running demo scenarios for 7 member profiles...")
+        print("Running demo scenarios for 7 member profiles...\n")
+        print("Tip: Run with --interactive or -i to enter your own session.\n")
 
         # --- Demo Member Profiles ---
-        # Each tuple: (name, raw_watts, duration_seconds, resistance_level,
-        #              baseline_watts, sessions_last_30_days)
+        # Each tuple: (name, current_watts, sessions_last_30_days,
+        #              total_lifetime_sessions)
 
         members = [
             (
                 "Alice — New Member",
-                80,         # Low raw watts, just starting out
-                1800,       # 30 minutes
-                3,          # Low resistance
-                0,          # No baseline yet
-                0           # No sessions yet
+                80,     # Low watts — just starting out
+                2,      # Only been twice this month
+                2       # Only 2 lifetime sessions — grace period
             ),
             (
                 "Ben — Beginner (High Frequency)",
-                90,         # Low-moderate watts
-                1500,       # 25 minutes — shorter sessions
-                3,          # Low resistance
-                85,         # Low baseline, slightly below today
-                20          # 5 days a week — very consistent
+                90,     # Low-moderate watts
+                20,     # 5 days a week — very consistent
+                20      # Still in grace period — only 20 lifetime sessions
             ),
             (
                 "Carmen — Intermediate",
-                150,        # Moderate watts
-                2700,       # 45 minutes
-                5,          # Mid-resistance
-                140,        # Baseline just below today — improving
-                12          # Exactly on target frequency
+                150,    # Moderate watts
+                12,     # Exactly on target frequency
+                48      # 4 months in — past grace period
             ),
             (
                 "David — Power User (Low Frequency)",
-                280,        # Very high watts
-                5400,       # 90 minutes — capped at 60 for factor
-                10,         # Maximum resistance
-                260,        # High baseline, performing above it
-                4           # Once a week — intense but infrequent
+                280,    # Very high watts
+                4,      # Once a week — intense but infrequent
+                52      # Over a year in — well past grace period
             ),
             (
                 "Elena — Consistent Intermediate",
-                160,        # Moderate-high watts
-                3600,       # 60 minutes — full session
-                6,          # Moderate-high resistance
-                170,        # Slightly below baseline today
-                14          # Slightly above target frequency
+                160,    # Moderate-high watts
+                14,     # Slightly above target frequency
+                84      # 7 months in — well past grace period
             ),
             (
-                "Frank — Returning Member",
-                120,        # Moderate watts
-                2400,       # 40 minutes
-                5,          # Mid-resistance
-                200,        # High baseline — underperforming today
-                3           # Just returned after a break
+                "Hannah — Daily Light Rider",
+                70,     # Modest watts — Champs-Élysées level effort
+                20,     # Nearly every weekday
+                120     # 6 months in — well past grace period
             ),
             (
-                "Grace — Elite Member",
-                250,        # High watts
-                3600,       # 60 minutes
-                9,          # Near maximum resistance
-                230,        # High baseline, performing above it
-                16          # Above target — very consistent
+                "Ivan — Weekly Power Session",
+                350,    # High watts — intense single session
+                4,      # Once a week
+                24      # 6 months in — well past grace period
             ),
         ]
 
-        for m_name, m_watts, m_duration, m_resistance, \
-                m_baseline, m_sessions in members:
+        for m_name, m_watts, m_sessions_30, m_lifetime in members:
             m_result = calculate_normalized_credit(
-                raw_watts=m_watts,
-                duration_seconds=m_duration,
-                resistance_level=m_resistance,
-                baseline_watts=m_baseline,
-                sessions_last_30_days=m_sessions
+                current_watts=m_watts,
+                sessions_last_30_days=m_sessions_30,
+                total_lifetime_sessions=m_lifetime
             )
             print_session_summary(m_name, m_result)
 
