@@ -34,7 +34,7 @@ def calculate_normalized_credit(
 
     # --- Input Validation ---
     if current_watts < 0:
-        raise ValueError("raw_watts cannot be negative.")
+        raise ValueError("current_watts cannot be negative.")
     if sessions_last_30_days < 0:
         raise ValueError("sessions_last_30_days cannot be negative.")
     if total_lifetime_sessions < 0:
@@ -86,16 +86,16 @@ def print_session_summary(member_name, result):
     grace_label = " (Grace Period)" if result['grace_period'] else ""
 
     print(f"\n{'='*48}")
-    print(f"  Member:                  {member_name}")
+    print(f"  Member: {member_name}")
     print(f"{'='*48}")
-    print(f"  Current Watts:           {result['current_watts']} W")
+    print(f"  Current Watts:           {result['current_watts']} Wh")
     print(f"  Lifetime Sessions:       {result['total_lifetime_sessions']}{grace_label}")
     print(f"  Sessions (Last 30 Days): {result['sessions_last_30_days']}")
     print(f"  Consistency Bonus:       {result['consistency_bonus']}")
     print(f"  Bonus Multiplier:        {result['bonus_multiplier']}")
     print(f"  {'─'*41}")
-    print(f"  Normalized Credit:       {result['normalized_credit']} Wh")
-    print(f"  Added To Balance:        {result['added_to_balance']} Wh")
+    print(f"  Normalized Credit:       {result['normalized_credit']} W")
+    print(f"  Added To Balance:        {result['added_to_balance']} W")
     print(f"{'='*48}")
 
 
@@ -153,9 +153,9 @@ if __name__ == "__main__":
                 48      # 4 months in — past grace period
             ),
             (
-                "David — Power User (Low Frequency)",
-                280,    # Very high watts
-                4,      # Once a week — intense but infrequent
+                "Frank — Returning Member",
+                120,    # Very high watts
+                3,      # Just returned after a week
                 52      # Over a year in — well past grace period
             ),
             (
