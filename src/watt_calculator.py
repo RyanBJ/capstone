@@ -57,11 +57,11 @@ def calculate_normalized_credit(
 
     # --- Final Calculation ---
     # Base credit is always equal to actual watts generated — never reduced.
-    # Consistency bonus adds up to 10% on top of the base credit.
-    # Maximum possible multiplier: 1.10 (perfect consistency)
+    # Consistency bonus adds up to 25% on top of the base credit.
+    # Maximum possible multiplier: 1.25 (perfect consistency)
     # Minimum possible multiplier: 1.0  (no sessions in last 30 days,
     #                                    but base credit always guaranteed)
-    bonus_multiplier = 1.0 + (consistency_bonus * 0.10)
+    bonus_multiplier = 1.0 + (consistency_bonus * 0.25)
     normalized_credit = current_watts * bonus_multiplier
 
     return {
