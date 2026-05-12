@@ -110,9 +110,9 @@ readable project history.
 | 1 | Orientation and Problem Definition | ✅ Complete |
 | 2 | Project Proposal & Planning | ✅ Complete |
 | 3 | Detailed Design | ✅ Complete |
-| 4 | Initial Implementation and Demo Presentation | 🔄 In Progress |
-| 5 | Core Algorithm Implementation | ⏳ Upcoming |
-| 6 | Integration, Feature Completion, & Evaluation | ⏳ Upcoming |
+| 4 | Initial Implementation and Demo Presentation | ✅ Complete |
+| 5 | Core Algorithm Implementation | ✅ Complete |
+| 6 | Integration, Feature Completion, & Evaluation | 🔄 In Progress |
 | 7 | Testing, Maintenance, & Documentation | ⏳ Upcoming |
 | 8 | Final Submission & Presentation | ⏳ Upcoming |
 
