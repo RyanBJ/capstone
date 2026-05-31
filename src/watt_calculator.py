@@ -5,6 +5,7 @@
 
 import sys
 import math
+import time
 
 def calculate_normalized_credit(
         current_watts,
@@ -187,3 +188,17 @@ if __name__ == "__main__":
             print_session_summary(m_name, m_result)
 
     print("\nDemo complete.")
+
+iterations = 1000
+start = time.perf_counter()
+
+for _ in range(iterations):
+    calculate_normalized_credit(
+        current_watts=70,
+        sessions_last_30_days=20,
+        total_lifetime_sessions=120
+    )
+
+end = time.perf_counter()
+avg_ms = ((end - start) / iterations) * 1000
+print(f"Average execution time: {avg_ms:.4f} ms over {iterations} iterations")

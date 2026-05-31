@@ -1,4 +1,5 @@
-# Power Plant Fitness 💪⚡
+<img src="diagrams/ppf-logo.png" alt="Power Plant Fitness" width="300" />
+
 ### MSIT 5910 Capstone Project — University of the People
 **Student:** Ryan Bains-Jordan
 **Supervisor:** Dr. Shabia Shabir
@@ -17,8 +18,12 @@ to the gym's broader sustainability goals.
 
 This capstone project produces a complete system design portfolio 
 including architecture diagrams, UI mockups, a normalized wattage credit 
-algorithm, and technical documentation. No live software deployment is 
-within scope.
+algorithm deployed to AWS Lambda, and technical documentation.
+
+---
+
+## Prototype
+[Figma Prototype](https://www.figma.com/proto/TFE1KgwRV0SOW2z0hlOhRC/Power-Plant-Fitness?node-id=5-12&scaling=scale-down-width&content-scaling=fixed&starting-point-node-id=2%3A2&page-id=0%3A1)
 
 ---
 
@@ -31,8 +36,7 @@ The system is organized across three layers:
   mobile app
 - **Local Infrastructure Layer** — Local battery and energy management 
   system, gym network, and the staff administrative dashboard
-- **Cloud Layer** — AWS-hosted backend servers, REST API, and 
-  PostgreSQL database
+- **Cloud Layer** — AWS API Gateway manages the REST requests and responses while AWS Lambda executes the function
 
 ![System Architecture Diagram](diagrams/system-architecture-v1.png)
 
@@ -41,13 +45,17 @@ The system is organized across three layers:
 ## Repository Structure
 ```text
 power-plant-fitness/
-├── diagrams/               # System architecture and design diagrams
+├── diagrams/                           # System architecture and design diagrams
 ├── docs/
-│   ├── assignments/        # Weekly course assignment submissions
-│   └── report/             # Capstone project technical report
-├── mockups/                # UI mockups for machine interface and dashboard
-└── src/                    # Python source code
-    └── watt_calculator.py  # Wattage credit normalization engine
+│   └── capstone_project_report.docx    # Capstone project technical report
+├── mockups/                            # UI mockups for machine interface and dashboard
+└── src/
+    ├── watt_calculator.py              # Wattage credit normalization engine
+    ├── lambda_function.py              # AWS Lambda deployment version
+    ├── lambda_handler.py               # Inter-module communication example
+    ├── machine_interface.py            # Simulated API request
+    ├── test_watt_calculator.py         # PyTest unit test suite
+    └── requirements.txt                # Python dependencies
 ```
 
 ---
@@ -73,18 +81,34 @@ machine touchscreen interface.
 
 ## Wattage Normalization Algorithm
 
-The normalization engine (`/src/watt_calculator.py`) accounts for:
+The normalization engine (`/src/watt_calculator.py`) calculates the 
+Watt Wallet credit applied to a member's account after each workout session.
 
-- Raw wattage output
-- Session duration
-- Resistance level relative to machine capacity
-- Member's historical baseline performance
+The algorithm guarantees that every member always earns at least what 
+they physically generated, with a single consistency bonus applied on top:
 
-This ensures that members of all fitness levels are rewarded fairly 
-for their effort, rather than being penalized by a system calibrated 
-only for peak athletic performance.
+```python
+consistency_bonus = min(sessions_last_30_days / target_sessions, 1.0)
+bonus_multiplier = 1.0 + (consistency_bonus * 0.25)
+normalized_credit = current_watts * bonus_multiplier
+```
 
-*Full implementation coming in Unit 5.*
+**Design principles:**
+- **Base credit guaranteed** — no member ever earns less than their actual wattage output
+- **Consistency rewarded** — members attending 12+ sessions per month earn up to 25% bonus
+- **Grace period** — new members receive full bonus for their first 12 lifetime sessions
+- **Ungameable** — physical attendance cannot be faked
+
+**Why a single factor?**
+Earlier versions used four multiplicative factors (duration, resistance, 
+baseline, consistency) but produced compounding penalties that reduced 
+legitimate sessions to near-zero credits. Consistency was retained as 
+the sole modifier because it directly serves the retention goal, cannot 
+be manipulated, and is equitable across all fitness levels.
+
+**Live deployment:**
+The algorithm is deployed as an AWS Lambda function behind an API Gateway 
+endpoint. See `/src/lambda_function.py` for the cloud deployment version.
 
 ---
 
@@ -103,6 +127,31 @@ readable project history.
 
 ---
 
+## Local Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/RyanBJ/capstone
+cd capstone/src
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run demo mode
+python watt_calculator.py
+
+# Run interactive mode
+python watt_calculator.py -i
+
+# Run unit tests
+python -m pytest test_watt_calculator.py -v
+
+# Test live API endpoint
+python machine_interface.py
+```
+
+---
+
 ## Progress
 
 | Unit | Deliverable | Status |
@@ -112,22 +161,23 @@ readable project history.
 | 3 | Detailed Design | ✅ Complete |
 | 4 | Initial Implementation and Demo Presentation | ✅ Complete |
 | 5 | Core Algorithm Implementation | ✅ Complete |
-| 6 | Integration, Feature Completion, & Evaluation | 🔄 In Progress |
-| 7 | Testing, Maintenance, & Documentation | ⏳ Upcoming |
-| 8 | Final Submission & Presentation | ⏳ Upcoming |
+| 6 | Integration, Feature Completion, & Evaluation | ✅ Complete |
+| 7 | Testing, Maintenance, & Documentation | ✅ Complete |
+| 8 | Final Submission & Presentation | 🔄 In Progress |
 
 ---
 
 ## Technologies & Tools
 
-| Tool | Purpose |
-|------|---------|
-| Python | Wattage credit normalization algorithm |
-| AWS | Cloud hosting (backend, API, database) |
-| PostgreSQL | Relational database design |
-| Draw.io | System architecture diagrams |
-| Figma | UI mockup design |
-| GitHub | Version control and project traceability |
+| Tool    | Purpose                                 |
+|---------|-----------------------------------------|
+| Python  | Wattage credit normalization algorithm  |
+| AWS     | Cloud hosting (backend, API, database)  |
+| PyCharm | Software development IDE                |
+| Draw.io | System architecture diagrams            |
+| Figma   | UI mockup design                        |
+| GitHub  | Version control and project traceability |
+| MS Word | Document editor                         |
 
 ---
 
