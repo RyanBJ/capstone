@@ -92,13 +92,13 @@ class TestBaseCredit:
         assert result["added_to_balance"] >= 62
 
     def test_maximum_bonus_multiplier(self):
-        """Perfect consistency should produce exactly 1.10 multiplier."""
+        """Perfect consistency should produce exactly 1.25 multiplier."""
         result = calculate_normalized_credit(
             current_watts=100,
             sessions_last_30_days=12,
             total_lifetime_sessions=48
         )
-        assert result["bonus_multiplier"] == pytest.approx(1.10, abs=0.001)
+        assert result["bonus_multiplier"] == pytest.approx(1.25, abs=0.001)
 
     def test_minimum_bonus_multiplier(self):
         """Zero consistency outside grace period should produce exactly 1.0 multiplier."""
